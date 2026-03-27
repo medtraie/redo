@@ -138,6 +138,8 @@ const Reports = () => {
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
   const [isBulkGeneratingReports, setIsBulkGeneratingReports] = useState(false);
   const [completedReportIds, setCompletedReportIds] = useState<string[]>([]);
+  const [glowingReportIds, setGlowingReportIds] = useState<string[]>([]);
+  const [dailyReportsDisplayMode, setDailyReportsDisplayMode] = useState<'cards' | 'list'>('list');
   const [reportsView, setReportsView] = useState<'executive' | 'operational' | 'finance'>('executive');
   const [layoutMode, setLayoutMode] = useState<'immersive' | 'compact'>('immersive');
   const [kpiOrder, setKpiOrder] = useState<Array<'value' | 'supply' | 'return' | 'mix'>>([
@@ -2841,6 +2843,10 @@ const Reports = () => {
     try {
       await Promise.resolve(action());
       setCompletedReportIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+      setGlowingReportIds((prev) => [...prev.filter((item) => item !== id), id]);
+      setTimeout(() => {
+        setGlowingReportIds((prev) => prev.filter((item) => item !== id));
+      }, 1200);
     } finally {
       setActiveReportId(null);
     }
@@ -2891,6 +2897,10 @@ const Reports = () => {
         setActiveReportId(report.id);
         await Promise.resolve(report.action());
         setCompletedReportIds((prev) => (prev.includes(report.id) ? prev : [...prev, report.id]));
+        setGlowingReportIds((prev) => [...prev.filter((item) => item !== report.id), report.id]);
+        setTimeout(() => {
+          setGlowingReportIds((prev) => prev.filter((item) => item !== report.id));
+        }, 1200);
       }
     } finally {
       setActiveReportId(null);
@@ -2909,6 +2919,31 @@ const Reports = () => {
     viewport: { once: true, margin: '-40px' },
     transition: { duration: 0.2, delay: index * 0.04 },
   });
+  const getDailyActionTone = (index: number, isCurrent: boolean, isDone: boolean) => {
+    if (isCurrent) {
+      return {
+        chip: 'border-indigo-300 bg-indigo-600 text-white shadow-sm shadow-indigo-200',
+        card: 'border-indigo-200 bg-indigo-50/40',
+        button: 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600',
+        status: 'text-indigo-600'
+      };
+    }
+    if (isDone) {
+      return {
+        chip: 'border-emerald-300 bg-emerald-50 text-emerald-700',
+        card: 'border-emerald-200 bg-emerald-50/40',
+        button: 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600',
+        status: 'text-emerald-600'
+      };
+    }
+    const palettes = [
+      { chip: 'border-sky-200 bg-sky-50 text-sky-700', card: 'border-sky-200 bg-sky-50/30', button: 'border-sky-300 text-sky-700 hover:bg-sky-50', status: 'text-sky-600' },
+      { chip: 'border-violet-200 bg-violet-50 text-violet-700', card: 'border-violet-200 bg-violet-50/30', button: 'border-violet-300 text-violet-700 hover:bg-violet-50', status: 'text-violet-600' },
+      { chip: 'border-amber-200 bg-amber-50 text-amber-700', card: 'border-amber-200 bg-amber-50/30', button: 'border-amber-300 text-amber-700 hover:bg-amber-50', status: 'text-amber-600' },
+      { chip: 'border-cyan-200 bg-cyan-50 text-cyan-700', card: 'border-cyan-200 bg-cyan-50/30', button: 'border-cyan-300 text-cyan-700 hover:bg-cyan-50', status: 'text-cyan-600' }
+    ];
+    return palettes[index % palettes.length];
+  };
   const activeFiltersCount = [
     dateFilter.startDate,
     dateFilter.endDate,
@@ -4054,10 +4089,30 @@ const Reports = () => {
                       <span className="font-semibold">{t('reports.daily.period', 'Période')}:</span> {periodLabel || t('reports.daily.notDefined', 'Non définie')} · <span className="font-semibold">{t('reports.filters.driver', 'Chauffeur')}:</span> {dailyReportDriver === 'all' ? t('reports.filters.all', 'Tous') : (drivers.find(d => d.id === dailyReportDriver)?.name || t('reports.daily.unknown', 'Inconnu'))}
                     </div>
                     <div className="flex items-center gap-2">
+                      <div className="inline-flex items-center rounded-lg border border-slate-200 bg-white p-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={dailyReportsDisplayMode === 'list' ? 'default' : 'ghost'}
+                          className="h-7 px-2 text-xs"
+                          onClick={() => setDailyReportsDisplayMode('list')}
+                        >
+                          {t('reports.daily.list', 'Liste')}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={dailyReportsDisplayMode === 'cards' ? 'default' : 'ghost'}
+                          className="h-7 px-2 text-xs"
+                          onClick={() => setDailyReportsDisplayMode('cards')}
+                        >
+                          {t('reports.daily.cards', 'Cards')}
+                        </Button>
+                      </div>
                       <Button
                         onClick={generateAllDailyReports}
                         disabled={isBulkGeneratingReports}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                        className="h-9 px-3 text-sm rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white"
                       >
                         <Download className="w-4 h-4 mr-2" />
                         {isBulkGeneratingReports ? t('reports.daily.generating', 'Génération en cours...') : t('reports.daily.downloadAllReports', 'Télécharger Tous les Rapports')}
@@ -4065,50 +4120,145 @@ const Reports = () => {
                     </div>
                   </div>
 
-                  <div className="mb-4 overflow-x-auto pb-2">
-                    <div className="flex items-center gap-2 min-w-max">
+                  {isBulkGeneratingReports && (
+                    <div className="mb-4 rounded-xl border border-indigo-200 bg-indigo-50/60 p-2.5">
+                      <div className="mb-1.5 flex items-center justify-between text-[11px]">
+                        <span className="font-semibold text-indigo-700">
+                          {t('reports.daily.progress', 'Progression')} {completedReportIds.length}/{dailyReportActions.length}
+                        </span>
+                        <span className="text-indigo-600">
+                          {activeReportId ? dailyReportActions.find((item) => item.id === activeReportId)?.label || '' : ''}
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-indigo-100">
+                        <motion.div
+                          className="h-full rounded-full bg-indigo-600"
+                          animate={{ width: `${Math.max(6, (completedReportIds.length / Math.max(1, dailyReportActions.length)) * 100)}%` }}
+                          transition={{ duration: 0.35, ease: 'easeOut' }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mb-4 pb-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       {dailyReportActions.map((report, index) => {
                         const isRunning = activeReportId === report.id || isBulkGeneratingReports;
                         const isDone = completedReportIds.includes(report.id);
                         const isCurrent = activeReportId === report.id;
+                        const isGlow = glowingReportIds.includes(report.id);
+                        const tone = getDailyActionTone(index, isCurrent, isDone);
                         return (
                           <React.Fragment key={`timeline-${report.id}`}>
-                            <Button
+                            <MButton
                               variant={isCurrent ? 'default' : isDone ? 'secondary' : 'outline'}
                               size="sm"
-                              className="h-9"
+                              className={`h-7 rounded-full px-2.5 text-[11px] max-w-[220px] truncate ${tone.chip}`}
                               onClick={() => runReportAction(report.id, report.action)}
                               disabled={isRunning}
+                              whileHover={{ y: -1, scale: 1.02 }}
+                              whileTap={{ scale: 0.96 }}
+                              animate={isGlow ? { boxShadow: ['0 0 0 rgba(16,185,129,0)', '0 0 0 6px rgba(16,185,129,0.22)', '0 0 0 rgba(16,185,129,0)'] } : undefined}
+                              transition={isGlow ? { duration: 0.9, ease: 'easeOut' } : undefined}
                             >
-                              <span className="mr-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-black/10 px-1 text-xs">
+                              <span className="mr-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-black/10 px-1 text-[10px]">
                                 {index + 1}
                               </span>
-                              {report.label}
-                            </Button>
-                            {index < dailyReportActions.length - 1 && <div className="h-px w-5 bg-slate-300" />}
+                              <span className="truncate">{report.label}</span>
+                            </MButton>
+                            {index < dailyReportActions.length - 1 && <div className="hidden md:block h-px w-4 bg-slate-300" />}
                           </React.Fragment>
                         );
                       })}
                     </div>
                   </div>
 
-                  <div className="grid md:grid-cols-3 gap-4">
-                      {dailyReportActions.map((report) => {
+                  {dailyReportsDisplayMode === 'cards' ? (
+                  <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-2">
+                      {dailyReportActions.map((report, index) => {
                         const isRunning = activeReportId === report.id || isBulkGeneratingReports;
+                        const isCurrent = activeReportId === report.id;
+                        const isDone = completedReportIds.includes(report.id);
+                        const isGlow = glowingReportIds.includes(report.id);
+                        const showSuccessCue = isGlow && isDone && !isCurrent;
+                        const tone = getDailyActionTone(index, isCurrent, isDone);
                         return (
-                          <Button
-                            key={report.id}
-                            onClick={() => runReportAction(report.id, report.action)}
-                            className="w-full"
-                            variant={report.variant || 'default'}
-                            disabled={isRunning}
-                          >
-                            <Download className="w-4 h-4 mr-2" />
-                            {activeReportId === report.id ? `${t('reports.daily.generatingPrefix', 'Génération')}: ${report.label}` : report.label}
-                          </Button>
+                          <motion.div key={report.id} {...cardMotion(index)} whileHover={{ y: -2, scale: 1.01 }} animate={isGlow ? { boxShadow: ['0 0 0 rgba(16,185,129,0)', '0 0 0 7px rgba(16,185,129,0.18)', '0 0 0 rgba(16,185,129,0)'] } : undefined} transition={isGlow ? { duration: 0.95, ease: 'easeOut' } : undefined} className={`rounded-lg border bg-white p-2.5 shadow-sm ${tone.card}`}>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-slate-900 truncate">{report.label}</p>
+                                <p className={`text-[11px] mt-1 ${isCurrent || isDone ? tone.status : 'text-slate-500'}`}>
+                                  {isCurrent ? t('reports.daily.generating', 'Génération en cours...') : isDone ? t('reports.daily.done', 'Terminé') : t('reports.daily.ready', 'Prêt')}
+                                </p>
+                              </div>
+                              <MButton
+                                onClick={() => runReportAction(report.id, report.action)}
+                                variant={report.variant || 'outline'}
+                                size="sm"
+                                className={`h-7 px-2 shrink-0 text-[11px] ${tone.button}`}
+                                disabled={isRunning}
+                                whileHover={{ y: -1, scale: 1.04 }}
+                                whileTap={{ scale: 0.96 }}
+                              >
+                                <motion.span
+                                  className="mr-1 inline-flex"
+                                  animate={showSuccessCue ? { scale: [1, 1.18, 1], rotate: [0, -8, 0] } : { scale: 1, rotate: 0 }}
+                                  transition={{ duration: 0.45, ease: 'easeOut' }}
+                                >
+                                  {showSuccessCue ? <ThumbsUp className="w-3 h-3" /> : <Download className="w-3 h-3" />}
+                                </motion.span>
+                                {showSuccessCue ? t('reports.daily.doneShort', 'OK') : t('reports.daily.downloadOneShort', 'PDF')}
+                              </MButton>
+                            </div>
+                          </motion.div>
                         );
                       })}
                   </div>
+                  ) : (
+                  <div className="space-y-2">
+                    {dailyReportActions.map((report, index) => {
+                      const isRunning = activeReportId === report.id || isBulkGeneratingReports;
+                      const isCurrent = activeReportId === report.id;
+                      const isDone = completedReportIds.includes(report.id);
+                      const isGlow = glowingReportIds.includes(report.id);
+                      const showSuccessCue = isGlow && isDone && !isCurrent;
+                      const tone = getDailyActionTone(index, isCurrent, isDone);
+                      return (
+                        <motion.div key={`list-${report.id}`} {...cardMotion(index)} whileHover={{ y: -1, scale: 1.005 }} animate={isGlow ? { boxShadow: ['0 0 0 rgba(16,185,129,0)', '0 0 0 7px rgba(16,185,129,0.18)', '0 0 0 rgba(16,185,129,0)'] } : undefined} transition={isGlow ? { duration: 0.95, ease: 'easeOut' } : undefined} className={`rounded-lg border bg-white p-2.5 shadow-sm ${tone.card}`}>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0 flex items-center gap-2">
+                              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-100 text-[10px] font-semibold text-slate-700">{index + 1}</span>
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-slate-900 truncate">{report.label}</p>
+                                <p className={`text-[11px] ${isCurrent || isDone ? tone.status : 'text-slate-500'}`}>
+                                  {isCurrent ? t('reports.daily.generating', 'Génération en cours...') : isDone ? t('reports.daily.done', 'Terminé') : t('reports.daily.ready', 'Prêt')}
+                                </p>
+                              </div>
+                            </div>
+                            <MButton
+                              onClick={() => runReportAction(report.id, report.action)}
+                              variant={report.variant || 'outline'}
+                              size="sm"
+                              className={`h-7 px-2 shrink-0 text-[11px] ${tone.button}`}
+                              disabled={isRunning}
+                              whileHover={{ y: -1, scale: 1.04 }}
+                              whileTap={{ scale: 0.96 }}
+                            >
+                              <motion.span
+                                className="mr-1 inline-flex"
+                                animate={showSuccessCue ? { scale: [1, 1.18, 1], rotate: [0, -8, 0] } : { scale: 1, rotate: 0 }}
+                                transition={{ duration: 0.45, ease: 'easeOut' }}
+                              >
+                                {showSuccessCue ? <ThumbsUp className="w-3 h-3" /> : <Download className="w-3 h-3" />}
+                              </motion.span>
+                              {showSuccessCue ? t('reports.daily.doneShort', 'OK') : t('reports.daily.downloadOneShort', 'PDF')}
+                            </MButton>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                  )}
               </CardContent>
           </Card>
           </motion.div>}

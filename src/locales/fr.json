@@ -11,6 +11,7 @@
     "trucks": "Camions",
     "drivers": "Chauffeurs",
     "clients": "Clients",
+    "factory": "Fournisseurs",
     "supplyReturn": "Distrubition",
     "petitCamion": "Allogaz",
     "exchanges": "Échanges",
@@ -965,7 +966,7 @@
         "pendingPayments": "Paiements en attente",
         "filterState": "État filtre",
         "paid": "Réglé",
-        "pending": "En attente",
+        "pending": "Validé",
         "details": "Détails",
         "settlement": "Règlement",
         "cancel": "Annuler",
@@ -1313,7 +1314,22 @@
       "actions": {
         "cancel": "Annuler",
         "saveChanges": "Enregistrer les modifications",
-        "addRepair": "Ajouter la réparation"
+        "addRepair": "Ajouter la réparation",
+        "export": "Exporter",
+        "edit": "Modifier",
+        "delete": "Supprimer"
+      },
+      "table": {
+        "date": "Date",
+        "vehicle": "Véhicule",
+        "type": "Type",
+        "cost": "Coût total",
+        "paid": "Payé",
+        "debt": "Dette",
+        "actions": "Actions"
+      },
+      "empty": {
+        "noRepairs": "Aucune réparation trouvée"
       }
     }
   },
@@ -1349,12 +1365,15 @@
         "truckDeleted": "Camion supprimé",
         "wasDeleted": "a été supprimé.",
         "driverUpdated": "Chauffeur mis à jour",
-        "assignmentSuccessOtherRest": "Assignation réussie. L'autre véhicule a été mis en repos."
+        "assignmentSuccessOtherRest": "Assignation réussie. L'autre véhicule a été mis en repos.",
+        "invalidDeleteCodeTitle": "Code invalide",
+        "invalidDeleteCodeDescription": "Le code de confirmation est incorrect."
       },
       "placeholder": {
         "quickCommand": "Commande rapide par matricule ou chauffeur...",
         "searchTruckOrDriver": "Rechercher par matricule ou chauffeur...",
         "historyFilter": "Filtre: Historique camion",
+        "deleteAllCode": "Entrez le code de confirmation",
         "sortBy": "Trier par",
         "changeDriver": "Changer chauffeur"
       },
@@ -1499,7 +1518,9 @@
       },
       "confirm": {
         "deleteAll": "Supprimer tous les camions ? Cette action est irréversible.",
-        "deleteTruckPrefix": "Supprimer le camion"
+        "deleteTruckPrefix": "Supprimer le camion",
+        "deleteAllCodeTitle": "Confirmation par code",
+        "deleteAllCodeDescription": "Pour supprimer tous les camions, saisissez le code de confirmation demandé."
       },
       "dialog": {
         "assignmentHistory": "Historique d'assignation",

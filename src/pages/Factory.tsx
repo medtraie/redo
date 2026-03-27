@@ -1577,11 +1577,11 @@ const Factory = () => {
                 <div className="space-y-3">
                   <Badge className="bg-white/15 border-white/20 text-white hover:bg-white/20">
                     <FactoryIcon className="w-3.5 h-3.5 mr-1.5" />
-                    {tr('Factory Studio', 'استوديو المصنع')}
+                    {tr('Supplier Studio', 'استوديو المورّدين')}
                   </Badge>
                   <div>
-                    <h1 className="app-page-title text-3xl md:text-4xl font-black tracking-tight">{tr("Gestion de l'Usine", 'إدارة المصنع')}</h1>
-                    <p className="app-page-subtitle text-slate-200/90 mt-1">{tr('Pilotage créatif des flux usine avec conservation complète du comportement métier.', 'قيادة ذكية لتدفقات المصنع مع الحفاظ الكامل على منطق العمل.')}</p>
+                    <h1 className="app-page-title text-3xl md:text-4xl font-black tracking-tight">{tr('Gestion des Fournisseurs', 'إدارة المورّدين')}</h1>
+                    <p className="app-page-subtitle text-slate-200/90 mt-1">{tr('Pilotage créatif des fournisseurs, flux et dettes avec conservation complète du comportement métier.', 'قيادة ذكية للمورّدين والتدفقات والديون مع الحفاظ الكامل على منطق العمل.')}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-[280px]">
@@ -2140,7 +2140,8 @@ const Factory = () => {
                               <Input
                                 type="number"
                                 min="0"
-                                value={bottleEntry?.emptyQuantity || 0}
+                                value={(bottleEntry?.emptyQuantity || 0) === 0 ? '' : (bottleEntry?.emptyQuantity || 0)}
+                                placeholder={tr('Entrez quantité', 'أدخل الكمية')}
                                 onChange={(e) => {
                                   const value = parseInt(e.target.value) || 0;
                                   const newBottles = [...sendForm.bottles];
@@ -2168,7 +2169,8 @@ const Factory = () => {
                               <Input
                                 type="number"
                                 min="0"
-                                value={bottleEntry?.defectiveQuantity || 0}
+                                value={(bottleEntry?.defectiveQuantity || 0) === 0 ? '' : (bottleEntry?.defectiveQuantity || 0)}
+                                placeholder={tr('Entrez quantité', 'أدخل الكمية')}
                                 onChange={(e) => {
                                   const value = parseInt(e.target.value) || 0;
                                   const newBottles = [...sendForm.bottles];
@@ -2865,7 +2867,8 @@ const Factory = () => {
                           <Label className="text-[10px] font-black text-slate-400 uppercase">{tr('Quantité', 'الكمية')}</Label>
                           <Input
                             type="number"
-                            value={receivedEntry.quantity}
+                            value={receivedEntry.quantity === 0 ? '' : receivedEntry.quantity}
+                            placeholder={tr('Entrez quantité', 'أدخل الكمية')}
                             onChange={(e) => {
                               const newBottles = [...returnForm.receivedBottles];
                               const nextQuantity = parseInt(e.target.value) || 0;

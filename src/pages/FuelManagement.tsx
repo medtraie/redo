@@ -64,8 +64,14 @@ import {
   AlertTriangle,
   Radar,
   Timer,
-  ShieldAlert
+  ShieldAlert,
+  Download,
+  FileSpreadsheet
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface FuelTankProps {
   level: number;
@@ -581,6 +587,189 @@ const FuelManagement = () => {
     });
     setDrainDialogOpen(false);
     toast.success(t('fuel.dialog.successDrain'));
+  };
+
+  // Export PDFs
+  const [exportStartDate, setExportStartDate] = useState<Date | null>(null);
+  const [exportEndDate, setExportEndDate] = useState<Date | null>(null);
+  const [exportTruckId, setExportTruckId] = useState<string>("__all__");
+  const isInExportRange = (value: Date | string) => {
+    const d = toDate(value).getTime();
+    const startOk = exportStartDate ? d >= new Date(exportStartDate).setHours(0, 0, 0, 0) : true;
+    const endOk = exportEndDate ? d <= new Date(exportEndDate).setHours(23, 59, 59, 999) : true;
+    return startOk && endOk;
+  };
+  const companyName = "SFT GAZ";
+  const exportCisternPdf = () => {
+    const rows = [
+      ...fuelPurchases.filter(p => isInExportRange(p.date)).map(p => ({
+        date: new Date(p.date).toLocaleDateString(uiLocale),
+        type: tr("Achat", "شراء"),
+        qty: `${formatNum(p.quantityLiters)} L`,
+        pu: formatMAD(p.price / Math.max(1, p.quantityLiters)),
+        amount: formatMAD(p.price || 0),
+        note: p.paymentMethod || ""
+      })),
+      ...fuelDrains.filter(d => isInExportRange(d.date)).map(d => ({
+        date: new Date(d.date).toLocaleDateString(uiLocale),
+        type: tr("Vidange", "تفريغ"),
+        qty: `${formatNum(d.quantityLiters)} L`,
+        pu: "",
+        amount: formatMAD(d.price || 0),
+        note: d.paymentMethod || ""
+      }))
+    ].sort((a, b) => {
+      const ad = a.date; const bd = b.date;
+      return ad < bd ? -1 : ad > bd ? 1 : 0;
+    });
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const periodFrom = exportStartDate ? new Date(exportStartDate).toLocaleDateString(uiLocale) : tr("Non défini", "غير محدد");
+    const periodTo = exportEndDate ? new Date(exportEndDate).toLocaleDateString(uiLocale) : tr("Non défini", "غير محدد");
+    doc.setFillColor(17, 24, 39);
+    doc.rect(0, 0, 595, 86, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.text(companyName, 40, 30);
+    doc.setFontSize(16);
+    doc.text(tr("MOUVEMENT DE CITERNE", "حركة الصهريج"), 40, 54);
+    doc.setFontSize(10);
+    doc.text(`${tr("Période", "الفترة")}: ${periodFrom} - ${periodTo}`, 40, 72);
+    doc.setTextColor(15, 23, 42);
+    autoTable(doc, {
+      startY: 110,
+      head: [[tr("Date", "التاريخ"), tr("Type", "النوع"), tr("Quantité", "الكمية"), tr("P.U", "سعر الوحدة"), tr("Montant", "المبلغ"), tr("Note", "ملاحظة")]],
+      body: rows.map(r => [r.date, r.type, r.qty, r.pu, r.amount, r.note]),
+      styles: { fontSize: 9, textColor: [15, 23, 42] },
+      headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      theme: "grid"
+    });
+    const totalRows = rows.reduce((acc, r) => {
+      if (r.type === tr("Achat", "شراء")) acc.purchases += Number(r.qty.replace(/[^\d.]/g, "")) || 0;
+      if (r.type === tr("Vidange", "تفريغ")) acc.drains += Number(r.qty.replace(/[^\d.]/g, "")) || 0;
+      return acc;
+    }, { purchases: 0, drains: 0 });
+    const net = totalRows.purchases - totalRows.drains;
+    const totalAmountMad =
+      fuelPurchases.filter(p => isInExportRange(p.date)).reduce((s, p) => s + (p.price || 0), 0) +
+      fuelDrains.filter(d => isInExportRange(d.date)).reduce((s, d) => s + (d.price || 0), 0);
+    const footerY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 22 : 150;
+    doc.setFillColor(239, 246, 255);
+    doc.roundedRect(40, footerY, 160, 46, 8, 8, "F");
+    doc.setFillColor(254, 242, 242);
+    doc.roundedRect(215, footerY, 160, 46, 8, 8, "F");
+    doc.setFillColor(236, 253, 245);
+    doc.roundedRect(390, footerY, 165, 46, 8, 8, "F");
+    doc.setFillColor(240, 249, 255);
+    doc.roundedRect(40, footerY + 60, 515, 46, 8, 8, "F");
+    doc.setFontSize(10);
+    doc.setTextColor(30, 64, 175);
+    doc.text(tr("Achats", "المشتريات"), 52, footerY + 18);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${formatNum(totalRows.purchases)} L`, 52, footerY + 36);
+    doc.setTextColor(190, 24, 24);
+    doc.text(tr("Vidanges", "التفريغات"), 227, footerY + 18);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${formatNum(totalRows.drains)} L`, 227, footerY + 36);
+    doc.setTextColor(5, 150, 105);
+    doc.text(tr("Variation nette", "التغير الصافي"), 402, footerY + 18);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${formatNum(net)} L`, 402, footerY + 36);
+    doc.setTextColor(30, 64, 175);
+    doc.text(tr("Total MAD", "إجمالي MAD"), 52, footerY + 78);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${formatMAD(totalAmountMad)}`, 52, footerY + 96);
+    const signY = footerY + 130;
+    doc.setDrawColor(148, 163, 184);
+    doc.line(40, signY, 220, signY);
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text(tr("Signature", "التوقيع"), 40, signY + 14);
+    doc.save(`mouvement-citerne.pdf`);
+  };
+  const exportTruckPdf = (scope: "single" | "all") => {
+    const buildTruckSection = (doc: jsPDF, matricule: string, appendPage: boolean) => {
+      const items = fuelConsumptions
+        .filter(c => c.truck === matricule && isInExportRange(c.date))
+        .sort((a, b) => +toDate(a.date) - +toDate(b.date));
+      const periodFrom = exportStartDate ? new Date(exportStartDate).toLocaleDateString(uiLocale) : tr("Non défini", "غير محدد");
+      const periodTo = exportEndDate ? new Date(exportEndDate).toLocaleDateString(uiLocale) : tr("Non défini", "غير محدد");
+      if (appendPage) doc.addPage();
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, 595, 80, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.text(companyName, 40, 26);
+      doc.setFontSize(14);
+      doc.text(`${tr("Consommation Camion", "استهلاك الشاحنة")}`, 40, 46);
+      doc.setFontSize(11);
+      doc.text(`${tr("Camion", "الشاحنة")}: ${matricule}`, 40, 62);
+      doc.setFontSize(10);
+      doc.text(`${tr("Période", "الفترة")}: ${periodFrom} - ${periodTo}`, 40, 74);
+      doc.setTextColor(15, 23, 42);
+      autoTable(doc, {
+        startY: 102,
+        head: [[tr("Date", "التاريخ"), tr("Chauffeur", "السائق"), tr("Litres", "اللترات"), tr("Kilométrage", "الكيلومترات"), "L/100"]],
+        body: items.map(it => {
+          const l100 = it.mileageKm && it.mileageKm > 0 ? ((it.liters / it.mileageKm) * 100).toFixed(2) : "";
+          return [
+            new Date(it.date).toLocaleDateString(uiLocale),
+            it.driver || "",
+            formatNum(it.liters),
+            it.mileageKm ? formatNum(it.mileageKm) : "",
+            l100
+          ];
+        }),
+        styles: { fontSize: 9, textColor: [15, 23, 42] },
+        headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        theme: "grid"
+      });
+      const totals = items.reduce((acc, it) => { acc.l += it.liters || 0; acc.km += it.mileageKm || 0; return acc; }, { l: 0, km: 0 });
+      const avg = totals.km > 0 ? (totals.l / totals.km) * 100 : 0;
+      const y = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 20 : 140;
+      doc.setFillColor(239, 246, 255);
+      doc.roundedRect(40, y, 160, 46, 8, 8, "F");
+      doc.setFillColor(236, 253, 245);
+      doc.roundedRect(215, y, 160, 46, 8, 8, "F");
+      doc.setFillColor(254, 242, 242);
+      doc.roundedRect(390, y, 165, 46, 8, 8, "F");
+      doc.setFontSize(10);
+      doc.setTextColor(30, 64, 175);
+      doc.text(tr("Total litres", "إجمالي اللترات"), 52, y + 18);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`${formatNum(totals.l)} L`, 52, y + 36);
+      doc.setTextColor(5, 150, 105);
+      doc.text(tr("Total km", "إجمالي الكيلومترات"), 227, y + 18);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`${formatNum(totals.km)} km`, 227, y + 36);
+      doc.setTextColor(190, 24, 24);
+      doc.text(tr("Moyenne", "المتوسط"), 402, y + 18);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`${avg ? avg.toFixed(2) : ""} L/100`, 402, y + 36);
+      const signY = y + 70;
+      doc.setDrawColor(148, 163, 184);
+      doc.line(40, signY, 220, signY);
+      doc.setFontSize(9);
+      doc.setTextColor(71, 85, 105);
+      doc.text(tr("Signature", "التوقيع"), 40, signY + 14);
+    };
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    if (scope === "single") {
+      const truck = trucks.find(t => String(t.id) === String(exportTruckId));
+      const matricule = truck?.matricule || "";
+      buildTruckSection(doc, matricule, false);
+    } else {
+      const ordered = trucks.slice().sort((a, b) => (a.matricule || "").localeCompare(b.matricule || ""));
+      let first = true;
+      ordered.forEach(trk => {
+        const hasRows = fuelConsumptions.some(c => c.truck === trk.matricule && isInExportRange(c.date));
+        if (!hasRows) return;
+        buildTruckSection(doc, trk.matricule || "", !first ? true : false);
+        first = false;
+      });
+    }
+    doc.save(scope === "single" ? `consommation-${(trucks.find(t => String(t.id) === String(exportTruckId))?.matricule || "camion")}.pdf` : "consommation-camions.pdf");
   };
 
   const saveTankCapacity = async () => {
@@ -1342,6 +1531,71 @@ const FuelManagement = () => {
         </TabsContent>
       </Tabs>
 
+      <Card className="mt-4 border border-slate-200 bg-white rounded-2xl">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between gap-2">
+            <span>{tr("Export PDF Carburant", "تصدير PDF للوقود")}</span>
+            <div className="text-xs text-slate-500">{tr("Mouvements citerne et consommations par camion", "حركات الصهريج واستهلاكات حسب الشاحنة")}</div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase tracking-wider">{tr("Début", "البداية")}</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-xs border-slate-200 h-10">
+                    <Calendar className="mr-2 h-3.5 w-3.5" />
+                    {exportStartDate ? new Date(exportStartDate).toLocaleDateString(uiLocale) : tr("Du", "من")}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent mode="single" selected={exportStartDate ?? undefined} onSelect={(d) => setExportStartDate(d ?? null)} />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase tracking-wider">{tr("Fin", "النهاية")}</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-xs border-slate-200 h-10">
+                    <Calendar className="mr-2 h-3.5 w-3.5" />
+                    {exportEndDate ? new Date(exportEndDate).toLocaleDateString(uiLocale) : tr("Au", "إلى")}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent mode="single" selected={exportEndDate ?? undefined} onSelect={(d) => setExportEndDate(d ?? null)} />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase tracking-wider">{tr("Camion", "الشاحنة")}</Label>
+              <Select value={exportTruckId} onValueChange={setExportTruckId}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder={tr("Tous les camions", "جميع الشاحنات")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">{tr("Tous les camions", "جميع الشاحنات")}</SelectItem>
+                  {trucks.map(trk => (
+                    <SelectItem key={trk.id} value={String(trk.id)}>{trk.matricule || trk.name || String(trk.id)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="border-slate-200" onClick={exportCisternPdf}>
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              {tr("Mouvement de Citerne (PDF)", "حركة الصهريج (PDF)")}
+            </Button>
+            <Button onClick={() => exportTruckPdf(exportTruckId === "__all__" ? "all" : "single")}>
+              <Download className="w-4 h-4 mr-2" />
+              {exportTruckId === "__all__" ? tr("Tous les Camions (PDF)", "جميع الشاحنات (PDF)") : tr("Consommation Camion (PDF)", "استهلاك الشاحنة (PDF)")}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Dialog open={tankCapacityDialogOpen} onOpenChange={setTankCapacityDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -1483,10 +1737,11 @@ const FuelManagement = () => {
               <Select
                 onValueChange={(value) => {
                   const selectedDriver = drivers.find((d) => d.id === value);
+                  const linkedTrucks = trucks.filter((t) => String(t.driverId) === String(value) && t.matricule);
                   setConsumptionForm({
                     ...consumptionForm,
                     driver: selectedDriver ? selectedDriver.name : "",
-                    truck: "", // Reset truck selection
+                    truck: linkedTrucks.length === 1 ? linkedTrucks[0].matricule : "",
                   });
                   setSelectedDriverId(value);
                 }}
@@ -1518,16 +1773,8 @@ const FuelManagement = () => {
                   <SelectValue placeholder={tr('Sélectionner un camion', 'اختر شاحنة')} />
                 </SelectTrigger>
                 <SelectContent>
-                      {trucks
-                    .filter((truck) => {
-                      const driver = drivers.find(d => d.id === selectedDriverId);
-                      // Filtre les camions associés au chauffeur sélectionné
-                      // Note: On suppose ici une correspondance par index ou matricule si driverId n'est pas dispo
-                      if (driver && truck.matricule) {
-                        return true; // Pour l'instant on montre tous les camions si un chauffeur est choisi
-                      }
-                      return false;
-                    })
+                  {trucks
+                    .filter((truck) => String(truck.driverId) === String(selectedDriverId) && truck.matricule)
                     .map((truck) => (
                       <SelectItem key={truck.id} value={truck.matricule}>
                         {truck.matricule}

@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useApp } from '@/contexts/AppContext';
 
-import { Package, FileText, Plus, Printer, Download, Search, Calendar, RotateCcw, Trash2, Edit, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FileSpreadsheet, Loader2, Settings, DollarSign, Calculator, ArrowUpRight, ArrowDownLeft, Truck, AlertTriangle, Zap, Sparkles, RefreshCw } from 'lucide-react';
+import { Package, FileText, Plus, Printer, Download, Search, Calendar, RotateCcw, Trash2, Edit, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FileSpreadsheet, Loader2, Settings, DollarSign, Calculator, ArrowUpRight, ArrowDownLeft, Truck, AlertTriangle, Zap, Sparkles, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SupplyOrderItem, SupplyOrder, BottleType } from '@/types';
 import { format } from 'date-fns';
@@ -18,6 +18,7 @@ import { RecordReturnDialog } from '@/components/dialogs/RecordReturnDialog';
 import { SupplyTruckDialog } from '@/components/dialogs/SupplyTruckDialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { cn, safeDate } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -887,6 +889,33 @@ const SupplyReturn = () => {
     return { score, label };
   }, [orderDate, selectionType, selectedDriverId, selectedClientId, newDriverMatricule, newClientName, selectedTruckId, items.length]);
 
+  const [selectedBottleTypeIds, setSelectedBottleTypeIds] = useState<Set<string>>(new Set());
+  const [bottleTypeQuery, setBottleTypeQuery] = useState('');
+  const filteredBottleTypes = useMemo(() => {
+    const q = bottleTypeQuery.trim().toLowerCase();
+    if (!q) return sortedBottleTypes;
+    return sortedBottleTypes.filter(bt =>
+      `${bt.name} ${bt.capacity || ''}`.toLowerCase().includes(q)
+    );
+  }, [sortedBottleTypes, bottleTypeQuery]);
+  const [showQuickActions, setShowQuickActions] = useState(true);
+  const [showTimeline, setShowTimeline] = useState(true);
+  const [showAnomaly, setShowAnomaly] = useState(true);
+  const displayedSectionsCount = (showQuickActions ? 1 : 0) + (showTimeline ? 1 : 0) + (showAnomaly ? 1 : 0);
+  useEffect(() => {
+    const saved = localStorage.getItem('sr_sections_vis_v1');
+    if (saved) {
+      try {
+        const o = JSON.parse(saved);
+        if (typeof o.showQuickActions === 'boolean') setShowQuickActions(o.showQuickActions);
+        if (typeof o.showTimeline === 'boolean') setShowTimeline(o.showTimeline);
+        if (typeof o.showAnomaly === 'boolean') setShowAnomaly(o.showAnomaly);
+      } catch {}
+    }
+  }, []);
+  useEffect(() => {
+    localStorage.setItem('sr_sections_vis_v1', JSON.stringify({ showQuickActions, showTimeline, showAnomaly }));
+  }, [showQuickActions, showTimeline, showAnomaly]);
   const productInsight = useMemo(() => {
     const selectedTypes = items.filter((item) => Number(item.fullQuantity || 0) > 0).length;
     const selectedVolume = items.reduce((sum, item) => sum + Number(item.fullQuantity || 0), 0);
@@ -1429,7 +1458,54 @@ const SupplyReturn = () => {
         </div>
       </div>
 
+      <div className="flex items-center justify-end mb-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8">
+              <Settings className="w-4 h-4 mr-1" />
+              {tr('Options d\'affichage', 'خيارات العرض')}
+            </Button>
+          </DropdownMenuTrigger>
+          <Badge className="ml-2 bg-slate-100 text-slate-700 border-slate-200">{displayedSectionsCount}/3</Badge>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>{tr('Sections', 'الأقسام')}</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuCheckboxItem checked={showQuickActions} onCheckedChange={(v) => setShowQuickActions(Boolean(v))}>
+              {tr('Quick Actions', 'إجراءات سريعة')}
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={showTimeline} onCheckedChange={(v) => setShowTimeline(Boolean(v))}>
+              {tr('Timeline opérationnel', 'الخط الزمني التشغيلي')}
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={showAnomaly} onCheckedChange={(v) => setShowAnomaly(Boolean(v))}>
+              {tr('Anomaly Engine', 'محرك الشذوذ')}
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => { setShowQuickActions(true); setShowTimeline(true); setShowAnomaly(true); }}>
+              <Eye className="w-4 h-4 mr-2" /> {tr('Tout afficher', 'إظهار الكل')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => { setShowQuickActions(false); setShowTimeline(false); setShowAnomaly(false); }}>
+              <EyeOff className="w-4 h-4 mr-2" /> {tr('Tout masquer', 'إخفاء الكل')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
       <div className="grid gap-4 xl:grid-cols-12">
+        {!showQuickActions ? (
+          <Card className="xl:col-span-4 border border-slate-200/80 bg-white/95 rounded-2xl">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center justify-between gap-2 text-slate-800">
+                <span className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-violet-600" />
+                  {tr("Quick Actions", "إجراءات سريعة")}
+                </span>
+                <Button size="sm" variant="outline" onClick={() => setShowQuickActions(true)} className="h-7 py-0">
+                  <Eye className="w-4 h-4 mr-1" /> {tr('Afficher', 'إظهار')}
+                </Button>
+              </CardTitle>
+            </CardHeader>
+          </Card>
+        ) : (
         <Card className="xl:col-span-4 border border-slate-200/80 bg-white/95 rounded-2xl">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center justify-between gap-2 text-slate-800">
@@ -1437,6 +1513,7 @@ const SupplyReturn = () => {
               <Sparkles className="w-4 h-4 text-violet-600" />
               {tr("Quick Actions", "إجراءات سريعة")}
               </span>
+              <div className="flex items-center gap-2">
               <Badge className={
                 adaptiveRisk.level === 'high'
                   ? 'bg-rose-100 text-rose-700 hover:bg-rose-100 border-rose-200'
@@ -1446,6 +1523,10 @@ const SupplyReturn = () => {
               }>
                 {adaptiveRisk.label}
               </Badge>
+              <Button size="sm" variant="outline" onClick={() => setShowQuickActions(false)} className="h-7 py-0">
+                <EyeOff className="w-4 h-4 mr-1" /> {tr('Masquer', 'إخفاء')}
+              </Button>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2.5">
@@ -1474,12 +1555,33 @@ const SupplyReturn = () => {
             ))}
           </CardContent>
         </Card>
+        )}
 
+        {!showTimeline ? (
+          <Card className="xl:col-span-5 border border-slate-200/80 bg-white/95 rounded-2xl">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center justify-between gap-2 text-slate-800">
+                <span className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-indigo-600" />
+                  {tr("Timeline opérationnel", "الخط الزمني التشغيلي")}
+                </span>
+                <Button size="sm" variant="outline" onClick={() => setShowTimeline(true)} className="h-7 py-0">
+                  <Eye className="w-4 h-4 mr-1" /> {tr('Afficher', 'إظهار')}
+                </Button>
+              </CardTitle>
+            </CardHeader>
+          </Card>
+        ) : (
         <Card className="xl:col-span-5 border border-slate-200/80 bg-white/95 rounded-2xl">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2 text-slate-800">
-              <Zap className="w-4 h-4 text-indigo-600" />
-              {tr("Timeline opérationnel", "الخط الزمني التشغيلي")}
+            <CardTitle className="text-base flex items-center justify-between gap-2 text-slate-800">
+              <span className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-indigo-600" />
+                {tr("Timeline opérationnel", "الخط الزمني التشغيلي")}
+              </span>
+              <Button size="sm" variant="outline" onClick={() => setShowTimeline(false)} className="h-7 py-0">
+                <EyeOff className="w-4 h-4 mr-1" /> {tr('Masquer', 'إخفاء')}
+              </Button>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -1510,7 +1612,23 @@ const SupplyReturn = () => {
             )}
           </CardContent>
         </Card>
+        )}
 
+        {!showAnomaly ? (
+          <Card className="xl:col-span-3 border border-slate-200/80 bg-white/95 rounded-2xl">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center justify-between gap-2 text-slate-800">
+                <span className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600" />
+                  {tr("Anomaly Engine", "محرك الشذوذ")}
+                </span>
+                <Button size="sm" variant="outline" onClick={() => setShowAnomaly(true)} className="h-7 py-0">
+                  <Eye className="w-4 h-4 mr-1" /> {tr('Afficher', 'إظهار')}
+                </Button>
+              </CardTitle>
+            </CardHeader>
+          </Card>
+        ) : (
         <Card className="xl:col-span-3 border border-slate-200/80 bg-white/95 rounded-2xl">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center justify-between gap-2 text-slate-800">
@@ -1518,7 +1636,12 @@ const SupplyReturn = () => {
               <AlertTriangle className={adaptiveRisk.level === 'high' ? 'w-4 h-4 text-rose-600' : adaptiveRisk.level === 'medium' ? 'w-4 h-4 text-amber-600' : 'w-4 h-4 text-emerald-600'} />
               {tr("Anomaly Engine", "محرك الشذوذ")}
               </span>
-              <span className="text-sm font-black text-slate-900">{adaptiveRisk.score}/100</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-black text-slate-900">{adaptiveRisk.score}/100</span>
+                <Button size="sm" variant="outline" onClick={() => setShowAnomaly(false)} className="h-7 py-0">
+                  <EyeOff className="w-4 h-4 mr-1" /> {tr('Masquer', 'إخفاء')}
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2.5">
@@ -1551,6 +1674,7 @@ const SupplyReturn = () => {
             ))}
           </CardContent>
         </Card>
+        )}
       </div>
 
       <div className="grid gap-8 lg:grid-cols-3">
@@ -1875,6 +1999,65 @@ const SupplyReturn = () => {
                 </div>
               </div>
               <div className="overflow-x-auto">
+                <div className="flex items-center justify-between gap-2 pb-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{tr("Type de Bouteille", "نوع القنينة")}</div>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-9 min-w-[260px] justify-between border-slate-200">
+                        {selectedBottleTypeIds.size === 0
+                          ? tr('Sélectionner un produit dans la liste', 'اختر منتجًا من القائمة')
+                          : [...selectedBottleTypeIds].map(id => sortedBottleTypes.find(b => b.id === id)?.name).filter(Boolean).join(', ')}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-2 rounded-2xl shadow-2xl border-slate-100" align="end">
+                      <div className="mb-2">
+                        <Input
+                          value={bottleTypeQuery}
+                          onChange={(e) => setBottleTypeQuery(e.target.value)}
+                          placeholder={tr('Rechercher un produit...', 'ابحث عن منتج...')}
+                          className="h-8"
+                        />
+                      </div>
+                      <div className="max-h-72 overflow-auto pr-1">
+                        {filteredBottleTypes.map(bt => {
+                          const checked = selectedBottleTypeIds.has(bt.id);
+                          return (
+                            <label key={bt.id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-slate-50">
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(v) => {
+                                  setSelectedBottleTypeIds(prev => {
+                                    const next = new Set(prev);
+                                    if (v) next.add(bt.id); else next.delete(bt.id);
+                                    return next;
+                                  });
+                                }}
+                              />
+                              <span className="text-sm">{bt.name}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {selectedBottleTypeIds.size > 0 && (
+                        <div className="mt-2 flex justify-between">
+                          <div className="flex flex-wrap gap-1">
+                            {[...selectedBottleTypeIds].slice(0, 3).map(id => {
+                              const name = sortedBottleTypes.find(b => b.id === id)?.name;
+                              if (!name) return null;
+                              return <Badge key={id} variant="secondary">{name}</Badge>;
+                            })}
+                            {selectedBottleTypeIds.size > 3 && (
+                              <Badge variant="outline">+{selectedBottleTypeIds.size - 3}</Badge>
+                            )}
+                          </div>
+                          <Button variant="ghost" size="sm" onClick={() => setSelectedBottleTypeIds(new Set())}>
+                            {tr('Réinitialiser', 'إعادة تعيين')}
+                          </Button>
+                        </div>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
@@ -1882,13 +2065,13 @@ const SupplyReturn = () => {
                         {tr("Type de Bouteille", "نوع القنينة")}
                       </TableHead>
                       <TableHead className="text-center font-semibold text-slate-700">{tr('Pleines (Sortie)', 'ممتلئة (خروج)')}</TableHead>
-                      <TableHead className="text-center font-semibold text-slate-700">{tr('Stock Usine', 'مخزون المصنع')}</TableHead>
+                      <TableHead className="text-center font-semibold text-slate-700">{tr('Stock Dépôt', 'مخزون المستودع')}</TableHead>
                       <TableHead className="text-right font-semibold text-slate-700">{tr('Prix Unitaire', 'السعر الوحدوي')}</TableHead>
                       <TableHead className="text-right font-semibold text-slate-700">{tr('Total', 'الإجمالي')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedBottleTypes.map((bt, idx) => {
+                    {(selectedBottleTypeIds.size > 0 ? sortedBottleTypes.filter(bt => selectedBottleTypeIds.has(bt.id)) : []).map((bt, idx) => {
                       const currentItem = items.find(i => i.bottleTypeId === bt.id);
                       const fullQty = currentItem?.fullQuantity ?? 0;
                       const amount = currentItem?.amount ?? 0;
@@ -1911,7 +2094,8 @@ const SupplyReturn = () => {
                                 type="number"
                                 min={0}
                                 max={getWarehouseFull(bt)}
-                                value={fullQty}
+                                value={fullQty === 0 ? '' : fullQty}
+                                placeholder={tr('Entrez quantité', 'أدخل الكمية')}
                                 onChange={(e) => handleQuantityChange(bt.id, 'full', e.target.value)}
                                 className={cn(
                                   "w-20 mx-auto text-center border-slate-200 focus:ring-indigo-500 font-medium",
@@ -1940,6 +2124,13 @@ const SupplyReturn = () => {
                         </motion.tr>
                       );
                     })}
+                    {selectedBottleTypeIds.size === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-12 text-slate-500">
+                          {tr('Sélectionner un produit dans la liste', 'اختر منتجًا من القائمة')}
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -2496,8 +2687,8 @@ const SupplyReturn = () => {
                               {tsu('history.paid', 'Réglé')}
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">
-                              {tsu('history.pending', 'En attente')}
+                            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200">
+                              {tsu('history.pending', 'Validé')}
                             </Badge>
                           )}
                         </TableCell>

@@ -124,7 +124,7 @@ const permissionCatalog: Array<{ key: PermissionKey; label: string }> = [
   { key: "petit-camion", label: "Allogaz" },
   { key: "defective-stock", label: "Stock Défectueux" },
   { key: "exchanges", label: "Échanges" },
-  { key: "factory", label: "Usine" },
+  { key: "factory", label: "Fournisseurs" },
   { key: "fuel-management", label: "Gestion Carburant & Huile" },
   { key: "repairs", label: "Gestion des Réparations" },
   { key: "expenses", label: "Dépenses Diverses" },

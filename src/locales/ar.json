@@ -11,7 +11,7 @@
     "trucks": "الشاحنات",
     "drivers": "السائقون",
     "clients": "العملاء",
-    "factory": "مصنع",
+    "factory": "المورّدون",
     "supplyReturn": "التوزيع",
     "petitCamion": "ألوجاز",
     "exchanges": "التبادلات",
@@ -1314,7 +1314,22 @@
       "actions": {
         "cancel": "إلغاء",
         "saveChanges": "حفظ التعديلات",
-        "addRepair": "إضافة الإصلاح"
+        "addRepair": "إضافة الإصلاح",
+        "export": "تصدير",
+        "edit": "تعديل",
+        "delete": "حذف"
+      },
+      "table": {
+        "date": "التاريخ",
+        "vehicle": "المركبة",
+        "type": "النوع",
+        "cost": "التكلفة الكلية",
+        "paid": "المدفوع",
+        "debt": "الدين",
+        "actions": "الإجراءات"
+      },
+      "empty": {
+        "noRepairs": "لم يتم العثور على إصلاحات"
       }
     }
   },
@@ -1350,12 +1365,15 @@
         "truckDeleted": "تم حذف الشاحنة",
         "wasDeleted": "تم حذفها.",
         "driverUpdated": "تم تحديث السائق",
-        "assignmentSuccessOtherRest": "تم الإسناد بنجاح. تم وضع المركبة الأخرى في التوقف."
+        "assignmentSuccessOtherRest": "تم الإسناد بنجاح. تم وضع المركبة الأخرى في التوقف.",
+        "invalidDeleteCodeTitle": "رمز غير صالح",
+        "invalidDeleteCodeDescription": "رمز التأكيد غير صحيح."
       },
       "placeholder": {
         "quickCommand": "أمر سريع حسب رقم الشاحنة أو السائق...",
         "searchTruckOrDriver": "ابحث حسب رقم الشاحنة أو السائق...",
         "historyFilter": "فلتر: سجل الشاحنة",
+        "deleteAllCode": "أدخل رمز التأكيد",
         "sortBy": "ترتيب حسب",
         "changeDriver": "تغيير السائق"
       },
@@ -1500,7 +1518,9 @@
       },
       "confirm": {
         "deleteAll": "حذف جميع الشاحنات؟ هذا الإجراء غير قابل للتراجع.",
-        "deleteTruckPrefix": "حذف الشاحنة"
+        "deleteTruckPrefix": "حذف الشاحنة",
+        "deleteAllCodeTitle": "تأكيد عبر الرمز",
+        "deleteAllCodeDescription": "لحذف جميع الشاحنات، أدخل رمز التأكيد المطلوب."
       },
       "dialog": {
         "assignmentHistory": "سجل الإسناد",

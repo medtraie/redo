@@ -127,6 +127,8 @@ const Trucks = () => {
   // تأكيد تغيير سائق لصف واحد
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingChange, setPendingChange] = useState<{ truckId: string; newDriverId: string } | null>(null);
+  const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
+  const [deleteAllCode, setDeleteAllCode] = useState('');
 
   // بحث وفلاتر وفرز
   const [search, setSearch] = useState('');
@@ -151,6 +153,22 @@ const Trucks = () => {
     setSelected(next);
   };
   const clearSelection = () => setSelected(new Set());
+  const requiredDeleteAllCode = 'SFTGAZ25';
+  const handleDeleteAllTrucks = () => {
+    if (deleteAllCode.trim() !== requiredDeleteAllCode) {
+      toast({
+        title: tu('toast.invalidDeleteCodeTitle', 'Code invalide'),
+        description: tu('toast.invalidDeleteCodeDescription', 'Le code de confirmation est incorrect.'),
+        variant: 'destructive'
+      });
+      return;
+    }
+    clearAllTrucks();
+    clearSelection();
+    setDeleteAllCode('');
+    setDeleteAllDialogOpen(false);
+    toast({ title: tu('toast.trucksDeleted', 'Camions supprimés'), description: tu('toast.allTrucksDeleted', 'Tous les camions ont été supprimés.') });
+  };
 
   // تصفية وفرز الشاحنات
   const filteredTrucks = useMemo(() => {
@@ -718,13 +736,7 @@ const Trucks = () => {
             <Button
               variant="outline"
               disabled={trucks.length === 0}
-              onClick={() => {
-                if (window.confirm(tu('confirm.deleteAll', 'Supprimer tous les camions ? Cette action est irréversible.'))) {
-                  clearAllTrucks();
-                  clearSelection();
-                  toast({ title: tu('toast.trucksDeleted', 'Camions supprimés'), description: tu('toast.allTrucksDeleted', 'Tous les camions ont été supprimés.') });
-                }
-              }}
+              onClick={() => setDeleteAllDialogOpen(true)}
               className="hidden md:flex items-center gap-2 bg-white/10 hover:bg-red-500/20 text-red-100 border-red-200/40"
             >
               <Trash2 className="w-4 h-4" />
@@ -734,6 +746,33 @@ const Trucks = () => {
           </div>
         </div>
       </div>
+
+      <AlertDialog open={deleteAllDialogOpen} onOpenChange={(open) => {
+        setDeleteAllDialogOpen(open);
+        if (!open) setDeleteAllCode('');
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tu('confirm.deleteAllCodeTitle', 'Confirmation par code')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {tu('confirm.deleteAllCodeDescription', 'Pour supprimer tous les camions, saisissez le code de confirmation demandé.')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Input
+              value={deleteAllCode}
+              onChange={(event) => setDeleteAllCode(event.target.value)}
+              placeholder={tu('placeholder.deleteAllCode', 'Entrez le code de confirmation')}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tu('actions.cancel', 'Annuler')}</AlertDialogCancel>
+            <Button variant="destructive" onClick={handleDeleteAllTrucks}>
+              {tu('actions.deleteAll', 'Supprimer tout')}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Stats Cards Section */}
       <div className="space-y-4">

@@ -659,7 +659,7 @@ const Repairs = () => {
           }}
           className="bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-200 transition-all active:scale-95"
         >
-          <Plus className="mr-2 h-5 w-5" /> {ru('addRepair', 'إضافة إصلاح')}
+          <Plus className="mr-2 h-5 w-5" /> {ru('actions.addRepair', 'Ajouter la réparation')}
         </Button>
       </div>
 
@@ -1506,13 +1506,13 @@ const Repairs = () => {
         <Table className="smart-table">
           <TableHeader className="bg-slate-50">
             <TableRow>
-              <TableHead className="font-semibold text-slate-700">{ru('table.date', 'التاريخ')}</TableHead>
-              <TableHead className="font-semibold text-slate-700">{ru('table.vehicle', 'المركبة')}</TableHead>
-              <TableHead className="font-semibold text-slate-700">{ru('table.type', 'النوع')}</TableHead>
-              <TableHead className="font-semibold text-slate-700">{ru('table.cost', 'التكلفة الكلية')}</TableHead>
-              <TableHead className="font-semibold text-slate-700">{ru('table.paid', 'المدفوع')}</TableHead>
-              <TableHead className="font-semibold text-slate-700">{ru('table.debt', 'الدين')}</TableHead>
-              <TableHead className="font-semibold text-slate-700">{ru('table.actions', 'الإجراءات')}</TableHead>
+              <TableHead className="font-semibold text-slate-700">{ru('table.date', 'Date')}</TableHead>
+              <TableHead className="font-semibold text-slate-700">{ru('table.vehicle', 'Véhicule')}</TableHead>
+              <TableHead className="font-semibold text-slate-700">{ru('table.type', 'Type')}</TableHead>
+              <TableHead className="font-semibold text-slate-700">{ru('table.cost', 'Coût total')}</TableHead>
+              <TableHead className="font-semibold text-slate-700">{ru('table.paid', 'Payé')}</TableHead>
+              <TableHead className="font-semibold text-slate-700">{ru('table.debt', 'Dette')}</TableHead>
+              <TableHead className="font-semibold text-slate-700">{ru('table.actions', 'Actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1521,7 +1521,7 @@ const Repairs = () => {
                 <TableCell colSpan={7} className="text-center py-12 text-slate-500">
                   <div className="flex flex-col items-center gap-2">
                     <Wrench className="h-8 w-8 text-slate-300" />
-                    <p>{ru('empty.noRepairs', 'لم يتم العثور على إصلاحات')}</p>
+                    <p>{ru('empty.noRepairs', 'Aucune réparation trouvée')}</p>
                   </div>
                 </TableCell>
               </TableRow>
